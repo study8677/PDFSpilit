@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置PDF拆分选项</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 50px;
+        }
+        .container {
+            max-width: 700px;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: #4a6fdc;
+            color: white;
+            font-weight: bold;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .btn-primary {
+            background-color: #4a6fdc;
+            border-color: #4a6fdc;
+        }
+        .btn-primary:hover {
+            background-color: #3a5bb9;
+            border-color: #3a5bb9;
+        }
+        .option-card {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .option-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .option-card.selected {
+            border: 2px solid #4a6fdc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header text-center">
+                <h3>设置拆分选项</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <p>文件名: <strong>{{ filename }}</strong></p>
+                    <p>总页数: <strong>{{ num_pages }}</strong>页</p>
+                </div>
+                
+                <form action="{{ url_for('split_pdf') }}" method="post" id="splitForm">
+                    <input type="hidden" name="filename" value="{{ filename }}">
+                    <input type="hidden" name="split_type" id="split_type" value="single">
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card option-card selected h-100" data-type="single">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">单页拆分</h5>
+                                    <p class="card-text">将每一页拆分为独立的PDF文件</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card option-card h-100" data-type="custom">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">自定义拆分</h5>
+                                    <p class="card-text">按指定页面范围拆分PDF</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card option-card h-100" data-type="interval">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">间隔拆分</h5>
+                                    <p class="card-text">按固定页数间隔拆分PDF</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 自定义拆分选项 -->
+                    <div id="customOptions" class="mb-3" style="display: none;">
+                        <label for="page_ranges" class="form-label">页面范围</label>
+                        <input type="text" class="form-control" id="page_ranges" name="page_ranges" placeholder="例如: 1-3,5,7-10">
+                        <small class="text-muted">输入格式：用逗号分隔多个范围，用连字符表示页面范围。</small>
+                    </div>
+                    
+                    <!-- 间隔拆分选项 -->
+                    <div id="intervalOptions" class="mb-3" style="display: none;">
+                        <label for="interval" class="form-label">页面间隔</label>
+                        <input type="number" class="form-control" id="interval" name="interval" min="1" max="{{ num_pages }}" value="1">
+                        <small class="text-muted">设置每个PDF文件包含的页数。</small>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" type="submit">拆分PDF</button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">返回首页</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const optionCards = document.querySelectorAll('.option-card');
+            const splitTypeInput = document.getElementById('split_type');
+            const customOptions = document.getElementById('customOptions');
+            const intervalOptions = document.getElementById('intervalOptions');
+            const pageRangesInput = document.getElementById('page_ranges');
+            const intervalInput = document.getElementById('interval');
+            const form = document.getElementById('splitForm');
+            
+            // 选项卡切换
+            optionCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // 清除所有选中状态
+                    optionCards.forEach(c => c.classList.remove('selected'));
+                    
+                    // 添加当前选中状态
+                    this.classList.add('selected');
+                    
+                    // 设置拆分类型
+                    const type = this.dataset.type;
+                    splitTypeInput.value = type;
+                    
+                    // 显示/隐藏对应选项
+                    if (type === 'custom') {
+                        customOptions.style.display = 'block';
+                        intervalOptions.style.display = 'none';
+                        pageRangesInput.required = true;
+                        intervalInput.required = false;
+                    } else if (type === 'interval') {
+                        customOptions.style.display = 'none';
+                        intervalOptions.style.display = 'block';
+                        pageRangesInput.required = false;
+                        intervalInput.required = true;
+                    } else {
+                        customOptions.style.display = 'none';
+                        intervalOptions.style.display = 'none';
+                        pageRangesInput.required = false;
+                        intervalInput.required = false;
+                    }
+                });
+            });
+            
+            // 表单提交前验证
+            form.addEventListener('submit', function(e) {
+                const splitType = splitTypeInput.value;
+                
+                if (splitType === 'custom') {
+                    const pageRanges = pageRangesInput.value.trim();
+                    if (!pageRanges) {
+                        e.preventDefault();
+                        alert('请输入有效的页面范围');
+                        return;
+                    }
+                    
+                    // 验证页面范围格式
+                    const rangePattern = /^(\d+(-\d+)?)(,\d+(-\d+)?)*$/;
+                    if (!rangePattern.test(pageRanges)) {
+                        e.preventDefault();
+                        alert('页面范围格式不正确，请使用逗号分隔多个范围，用连字符表示页面范围，例如：1-3,5,7-10');
+                        return;
+                    }
+                } else if (splitType === 'interval') {
+                    const interval = intervalInput.value;
+                    if (!interval || interval < 1) {
+                        e.preventDefault();
+                        alert('请输入大于0的页面间隔');
+                        return;
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
